@@ -1,0 +1,805 @@
+<html>
+<head>
+<title>Galaga</title>
+<style type="text/css">
+	canvas{border: 2px solid black;}
+</style>
+
+</head>
+<body>
+	<section>
+	<div>
+	<canvas id="canvas" width="240" height = "320"></canvas>	
+	</div>
+	
+	<script>
+	//decleration of variables and yes i think i use them all.
+	var canvas;
+	var ctx;
+	var w = 240, h = 320;
+	var score;
+	var highScore = 0;
+	var lives = 3;
+	var oh=16, ow=16;
+	var fx,fy;
+	var bx, by, b2x, b2y;
+	var currentx, currenty;
+	//var bulletCount;
+	var bulletExists, shipHit;
+	var moveForRight, moveDown;
+	var allKilled;
+	var level;
+	var speed;
+	var numBullets;
+	var enemyBulletExists;
+	var inervalID;
+	var enemyBullets = new Array();
+	var beePoints = 50, birdPoints = 100, dragonPoints = 150;
+	var bullet1 = new bullet(bx,by);
+	var beeRow1 = new Array();
+	var beeRow2 = new Array();
+	var birdRow1 = new Array();
+	var birdRow2 = new Array();
+	var dragons = new Array();
+	var rightDown = false;
+	var leftDown = false;
+	
+	//Keyboard functions that assign the corresponding variables 
+	//true when the key is pressed.
+	function onKeyDown(evt) 
+	{
+	  if (evt.keyCode == 39) rightDown = true;
+	  else if (evt.keyCode == 37) 	leftDown = true;
+	  else if (evt.keyCode == 32){
+			shoot();
+		}
+	} 
+	function onKeyUp(evt) 
+	{
+	  if (evt.keyCode == 39) 		rightDown = false;
+	  else if (evt.keyCode == 37) 	leftDown = false;
+	}
+
+	/*Objects created Bullet, Bee, Bird, Dragon. Each stores 
+	  the x, y, rightx, and bottomY and also has the method update
+	  position used to update the coordinates on movement. The 
+	  ships have update hit that changes the alive quality when hit.*/
+	
+	function bullet(){
+		this.x = null;
+		this.y = null;
+		this.rightX = null;
+		this.bottomY = null;
+		
+		this.updatePosition = updatePosition;
+		function updatePosition(x,y){
+			this.x = x;
+			this.y = y;
+			this.rightX = x+ 16;
+			this.bottomY = y + 16;
+		}
+	}
+	
+	function bee(x, y){
+		this.x = x;
+		this.y = y;
+		this.rightX = x + 16;
+		this.bottomY = y + 16;
+		this.alive = 1;
+		this.color = "green";
+		
+		this.updatePosition = updatePosition;
+		function updatePosition(x,y){
+			this.x = x;
+			this.y = y;
+			this.rightX = x+ 16;
+			this.bottomY = y + 16;
+		}
+		
+		this.updateHit = updateHit;
+		function updateHit(){
+			this.alive = 0;
+			this.color = "black"
+		}
+	}
+	
+	function bird(x, y){
+		this.x = x;
+		this.y =y;
+		this.rightX = x + 16;
+		this.bottomY = x + 16;
+		this.alive = 1;
+		this.color = "red";
+	
+		this.updatePosition = updatePosition;
+		function updatePosition(x,y){
+			this.x = x;
+			this.y = y;
+			this.rightX = x+ 16;
+			this.bottomY = y + 16;
+		}
+		
+		this.updateHit = updateHit;
+		function updateHit(){
+			this.alive = 0;
+			this.color = "black"
+		}
+	}
+	
+	function dragon(x,y){
+		this.x = x;
+		this.y = y;
+		this.rightX = x +16;
+		this.bottomY = x +16;
+		this.hit = 0;
+		this.alive = 1;
+		this.color = "purple";
+		
+		this.updatePosition = updatePosition;
+		function updatePosition(x,y){
+			this.x = x;
+			this.y = y;
+			this.rightX = x+ 16;
+			this.bottomY = y + 16;
+		}
+		
+		this.updateHit = updateHit;
+		function updateHit(){
+			if (this.hit == 1){
+				this.alive = 0;
+				this.color = "black";
+			}else{
+				this.hit = 1;
+				//this.alive = 0;
+				this.color = "yellow"
+			}
+		}
+	}
+	
+	/*Functions associated with the keyboard buttons. Right and 
+	  left coorespond to the method move, and shoot occurs when the 
+	  spacebar is pressed*/
+	  
+	function moveRight(){
+		if(fx < 220){
+			fx = fx + 2;
+		}
+	}
+	
+	function moveLeft(){
+		if (fx > 2){
+			fx = fx - 2;
+		}
+	}
+	
+	function shoot(){
+		
+		if(!bulletExists){
+			bx = fx + 4;
+			by = 286;
+			bulletExists = 1;
+		}
+		/*if(bulletCount = 0){
+			bx = fx + 4;
+			by = 286;
+			bulletCount++;
+		}else if (bulletCount = 1){
+			b2x = fx + 4;
+			b2y = 286;
+			bulletCount++;
+		}*/
+	}
+
+//Initializion method called when the program opens. 
+//Initializes variables and sets the interval that the page is redrawn.
+function init(){
+	canvas = document.getElementById("canvas");
+	ctx = canvas.getContext("2d");
+	fx = 112;
+	fy = 304;
+	currentx = 32;
+	currenty = 128;
+	//bulletCount = 0;
+	window.addEventListener('keydown',onKeyDown,true);
+	window.addEventListener('keyup',onKeyUp,true);
+	score = 0;
+	level = 1;
+	numBullets = 0;
+	speed = 1;
+	//numBullets = 0;
+	initEnemyBullets();
+	bulletExists = 0;
+	moveForRight = 1;
+	moveDown = 1;
+	shipHit = 0;
+	bulletExists = 0;
+	enemyBulletExists = 0;
+	initFormation();
+	intervalID = setInterval(draw, 10);
+}
+
+function clear(){
+	ctx.clearRect(0,0,w,h);
+}
+
+//Creates the initial formation and positions the objects occur.
+function initFormation(){
+	var x, y;
+  	y = currenty;
+  	x = currentx;
+  	
+  	for (i = 0; i < 10; i++){
+		beeRow1[i] = new bee(x, y);
+	  	x=x+18;
+  	} 
+  	
+  	x = currentx;
+  	y = y - 19;
+	for (i = 0; i < 10; i++){
+		beeRow2[i] = new bee(x,y);
+	  	x=x+18;
+  	}
+	
+  	x = currentx;
+  	y = y - 19;
+	for (i = 0; i < 10; i++){
+		birdRow1[i] = new bird(x,y);
+	  	x=x+18;
+  	}
+	
+	x = currentx;
+  	y = y - 19;
+	for (i = 0; i < 10; i++){
+		birdRow2[i] = new bird(x,y);
+	  	x=x+18;
+  	}
+	
+	x = currentx + 54;
+  	y = y - 19;
+	for (i = 0; i < 4; i++){
+		dragons[i] = new dragon(x,y);
+	  	x=x+18;
+  	}
+}
+
+//draws the fighter
+function fighter(x,y) {
+	ctx.fillStyle = "blue";
+	ctx.beginPath();
+	ctx.rect(x,y,ow,oh);
+	ctx.closePath();
+	ctx.fill();
+}	
+
+/*
+ * The next three functions draw the objects in the formation on
+ * the canvas. Im pretty sure there is a more efficient method to
+ * go about this if I have enough time I want to try and figure it 
+ * out. But it loops though and draws all the objects that are alive 
+ * in the array.
+ */
+function drawBees(){
+  	var x, y, y2;
+  	y = currenty;
+  	y2 = currenty - 19;
+  	x = currentx;
+	for (i = 0; i < 10; i++){
+		ctx.globalAlpha = 1;
+		beeRow1[i].updatePosition(x,y);
+		if (!beeRow1[i].alive){
+			ctx.globalAlpha = 0.1;
+		}
+		ctx.fillStyle = beeRow1[i].color;
+		ctx.beginPath();
+		ctx.rect(x,y,15,16)
+		ctx.closePath();
+	  	ctx.fill();
+	  	x=x+18;
+  	}
+	x= currentx;
+	for (i = 0; i < 10; i++){
+		ctx.globalAlpha = 1;
+		beeRow2[i].updatePosition(x,y);
+		if (!beeRow2[i].alive){
+			ctx.globalAlpha = 0.1;
+		}
+		ctx.fillStyle = beeRow2[i].color;
+		ctx.beginPath();
+		ctx.rect(x,y2,15,16);
+		ctx.closePath();
+	  	ctx.fill();
+	  	x=x+18;
+  	}
+	
+}
+
+function drawBirds(){
+  	var x, y, y2;
+  	y = (currenty - (19*2));
+  	y2 = (currenty - (19*3));
+  	x = currentx;
+	for (i = 0; i < 10; i++){
+		ctx.globalAlpha = 1;
+		birdRow1[i].updatePosition(x,y);
+		if (!birdRow1[i].alive){
+			ctx.globalAlpha = 0.1;
+		}
+		ctx.fillStyle = birdRow1[i].color;
+		ctx.beginPath();
+		ctx.rect(x,y,15,16)
+		ctx.closePath();
+	  	ctx.fill();
+	  	x=x+18;
+  	}
+	x= currentx;
+	for (i = 0; i < 10; i++){
+		ctx.globalAlpha = 1;
+		birdRow2[i].updatePosition(x,y);
+		if (!birdRow2[i].alive){
+			ctx.globalAlpha = 0.1;
+		}
+		ctx.fillStyle = birdRow2[i].color;
+		ctx.beginPath();
+		ctx.rect(x,y2,15,16);
+		ctx.closePath();
+	  	ctx.fill();
+	  	x=x+18;
+  	}
+}
+
+function drawDragons(){
+  	var x,y;
+  	y = (currenty - (19*4));
+  	x = currentx + 54;
+	for (i = 0; i < 4; i++){
+		
+		dragons[i].updatePosition(x,y);
+		if (!dragons[i].alive){
+			ctx.globalAlpha = 0.1;
+		}
+		ctx.globalAlpha = 1;
+		ctx.fillStyle = dragons[i].color;
+		ctx.beginPath();
+		ctx.rect(x,y,15,16)
+		ctx.closePath();
+	  	ctx.fill();
+	  	x=x+18;
+  	}
+}
+
+//These functions draw the bullets onto the screen.
+
+function drawBullet(x,y){
+	ctx.fillStyle = "gray"
+	ctx.beginPath();
+	ctx.rect(x,y,8,16);
+	ctx.closePath();
+	ctx.fill();
+}
+
+function drawEnemyBullets(){
+	for (i = 0; i < numBullets; i++){
+		drawBullet(enemyBullets[i].x, enemyBullets[i].y);
+	}
+}
+
+//draws the number of lives in the top right of the screen
+function drawLives(){
+	ctx.fillStyle = "blue";
+	var x, y;
+	x = 230;
+	y = 5;
+	for(i = 0; i<(lives-1); i++){
+		ctx.beginPath();
+		ctx.rect(x, y, 8, 8);
+		ctx.closePath();
+		ctx.fill();
+		x = x-11;
+	}
+}
+
+//draws an explosion when the object is hit.
+function drawExplosion(x,y){
+	ctx.fillStyle="orange";
+  	ctx.beginPath();
+  	ctx.arc(x,y,8,0, Math.PI*2, true);
+  	ctx.closePath();
+  	ctx.fill();
+}
+
+//Draws the background as well as randomly generated stars
+function background(){
+	ctx.fillStyle = "black";
+	ctx.beginPath();
+	ctx.rect(0,0,w,h);
+	ctx.closePath();
+	ctx.fill();
+	stars();
+	drawLives();
+}
+
+function stars(){
+	var x,y;
+	ctx.fillStyle = "white";
+	for (i=0; i<10; i++){
+		x = Math.floor(Math.random()*221) + 10;
+		y = Math.floor(Math.random()*241) + 10;
+		ctx.beginPath();
+		ctx.rect(x,y,2,2);
+		ctx.closePath();
+		ctx.fill();	
+	}
+}
+
+//These methods move all the bullets on the screen by
+//adjusting the y value.
+function moveEnemyBullets(){
+	if (enemyBulletExists){
+		for (i=0; i<numBullets; i++){
+			//enemyBullets[i].y = enemyBullets[i].y + 1;
+			enemyBullets[i].updatePosition(enemyBullets[i].x, (enemyBullets[i].y + 1));
+		}
+	}
+}
+
+function moveBullets(){
+	if (bulletExists){
+		by = by - 6;
+	}
+	/*if (bulletCount = 1){
+		by = by - 20;
+	}else if (bulletCount = 2){
+		by = by - 20;
+		b2y = b2y - 20;
+	}*/
+}
+
+//This function causes the formation to move back and forth across 
+//the board while slowly moving down.
+function moveFormation(){
+	if (moveForRight){
+		currentx = currentx + speed;
+		if (moveDown){
+			currenty = currenty + (speed + 1);
+			moveDown = 0;
+		}
+		if (currentx > 56){
+			moveForRight = 0;
+			moveDown = 1;
+		}
+	}else{
+		currentx = currentx - speed;
+		if (moveDown){
+			currenty = currenty + (speed + 1);
+			moveDown = 0;
+		}
+		if (currentx < 8){
+			moveForRight = 1;
+			moveDown = 1;
+		}
+	}
+}
+
+//These functions will check to see if the bullet is off the 
+//screen and cchange the boolean if it is.
+function checkBullet(){
+	if (by< -16){
+		bulletExists = 0;
+	}
+	/*if (by < -16 || b2y <-16){
+		bulletCount--;
+	}*/
+}
+
+function checkEnemyBullet(){
+	//if (numBullets = 1)
+		if (numBullets > 0){
+			if (enemyBullets[0].y > 336){
+				enemyBulletExists = 0;
+			}
+		}
+	/*}else if (numBullets = 2){
+		if (enemyBullets[0].y > 336 && enemyBullets[1].y > 336){
+			enemyBulletExists = 0;
+		}
+	}else if (numBullets = 3){
+		if (enemyBullets[0].y > 336 && enemyBullets[1].y > 336 && enemyBullets[2].y > 336){
+			enemyBulletExists = 0;
+		}
+	}*/
+	
+}
+
+/*This was probably the most difficult function to write, it detects collision.
+ * It checks for collision between the different objects in the game. It will check
+   and see if any of the x,y,rightx,or bottomy overlap. If they do then the correct 
+   action is taken to destroy the ship.
+ */
+ 
+function checkCollision(){
+	var ex, ey;
+	if (bulletExists){
+		for (i = 0; i < 10; i++){
+			if ((beeRow1[i].alive) && (bullet1.y >= beeRow1[i].y) && (bullet1.y <= beeRow1[i].bottomY) &&
+				((bullet1.x < beeRow1[i].rightX) && (bullet1.x > beeRow1[i].x) || 
+					(bullet1.rightX > beeRow1[i].rightX) && (bullet1.rightX < beeRow1[i].x))){
+				beeRow1[i].updateHit();
+				bulletExists = 0;
+				by = -20;
+				bx = -20;
+				ex = (beeRow1[i].x + 8);
+				ey = (beeRow1[i].y + 8);
+				drawExplosion(ex, ey);
+				shipHit = 1;
+				score = score + beePoints;
+				break;
+			}else if ((beeRow2[i].alive) && (bullet1.y >= beeRow2[i].y) && (bullet1.y <= beeRow2[i].bottomY) &&
+				((bullet1.x < beeRow2[i].rightX) && (bullet1.x > beeRow2[i].x) ||
+				(bullet1.rightX > beeRow2[i].rightX) && (bullet1.rightX < beeRow2[i].x))){
+				beeRow2[i].updateHit();
+				bulletExists = 0;
+				by = -20;
+				bx = -20;
+				ex = (beeRow2[i].x + 8);
+				ey = (beeRow2[i].y + 8);
+				drawExplosion(ex, ey);
+				shipHit = 1;
+				score = score + beePoints;
+				break;
+			}else if ((birdRow1[i].alive) && (bullet1.y >= birdRow1[i].y) && (bullet1.y <= birdRow1[i].bottomY) &&
+				((bullet1.x < birdRow1[i].rightX) && (bullet1.x > birdRow1[i].x) ||
+						(bullet1.rightX > birdRow1[i].rightX) && (bullet1.rightX < birdRow1[i].x))){
+				birdRow1[i].updateHit();
+				bulletExists = 0;
+				by = -20;
+				bx = -20;
+				ex = (birdRow1[i].x + 8);
+				ey = (birdRow1[i].y + 8);
+				drawExplosion(ex, ey);
+				shipHit = 1;
+				score = score + birdPoints;
+				break;
+			}else if ((birdRow2[i].alive) && (bullet1.y >= birdRow2[i].y) && (bullet1.y <= birdRow2[i].bottomY) &&
+				((bullet1.x < birdRow2[i].rightX) && (bullet1.x > birdRow2[i].x) ||
+				(bullet1.rightX > birdRow2[i].rightX) && (bullet1.rightX < birdRow2[i].x))){
+				birdRow2[i].updateHit();
+				bulletExists = 0;
+				by = -20;
+				bx = -20;
+				ex = (birdRow2[i].x + 8);
+				ey = (birdRow2[i].y + 8);
+				drawExplosion(ex, ey);
+				shipHit = 1;
+				score = score + beePoints;
+				break;
+			}	
+		}
+		for (i = 0; i < 4; i++){
+			if ((!shipHit) && (dragons[i].alive) && (bullet1.y >= dragons[i].y) && (bullet1.y <= dragons[i].bottomY) &&
+					((bullet1.x < dragons[i].rightX) && (bullet1.x > dragons[i].x) || 
+							(bullet1.rightX > dragons[i].rightX) && (bullet1.rightX < dragons[i].x))){
+					dragons[i].updateHit();
+					bulletExists = 0;
+					by = -20;
+					bx = -20;
+					ex = (dragons[i].x + 8);
+					ey = (dragons[i].y + 8);
+					drawExplosion(ex, ey);
+					if (!dragons[i].alive){
+						score = score + dragonPoints;
+					}
+					break;
+				}
+		}
+	}
+	shipHit = 0;
+}
+   
+function checkFighterCollision(){
+	var ex, ey;
+	var fRightX = fx + 16;
+	if(enemyBulletExists){
+		for(i=0;i<numBullets;i++){
+			if ((enemyBullets[i].bottomY >= fy) && (enemyBullets[i].bottomY <= 320) &&
+				((enemyBullets[i].x < fRightX) && (enemyBullets[i].x > fx) || 
+				(enemyBullets[i].rightX > fRightX) && (enemyBullets[i].rightX < fx))){
+					fx = 112;
+					fy = 304;
+					currentx = 32;
+					currenty = 128;
+					lives--;
+					ex = fx + 8;
+					ey = fy + 8;
+					enemyBulletExists = 0;
+					enemyBullets[i].x = null;
+					enemyBullets[i].y = null;
+ 					drawExplosion(ex,ey);
+					break;
+			}
+		}
+	}
+	
+	for (i=0;i<10; i++){
+		if ((beeRow1[i].alive && beeRow1[i].bottomY > 320) || (beeRow2[i].alive && beeRow2[i].bottomY > fy) 
+				|| (birdRow1[i].alive && birdRow1[i].bottomY > fy) || (birdRow2[i].alive && birdRow2[i].bottomY > fy)){
+			fx = 112;
+			fy = 304;
+			currentx = 32;
+			currenty = 128;
+			lives--;
+			break;
+		}
+	}
+	for (i= 0; i<4; i++){
+		if(dragons[i].alive && dragons[i].bottomY > fy){
+			fx = 112;
+			fy = 304;
+			currentx = 32;
+			currenty = 128;
+			lives--;
+			break;
+		}
+	}
+}   
+
+//This is checking the conditions of the game. If all the objects are killed,
+//if all the live are out.
+function checkGameConditions(){
+	allKilled = 1;
+	for (i=0;i<10; i++){
+		if (beeRow1[i].alive || beeRow2[i].alive || birdRow1[i].alive || birdRow2[i].alive){
+			allKilled = 0;
+			break;
+		}
+	}
+	for (i=0;i<4;i++){
+		if (dragons[i].alive){
+			allKilled = 0;
+			break;
+		}
+	}
+	if (allKilled){
+		newLevel();
+		level++;
+	}
+	if (lives == 0){
+		window.clearInterval(intervalID);
+		if (score > highScore){
+			if (confirm("Game Over!! \nNew High Score " + score +
+					"\nWould you like to play again?")){
+				intervalID = setInterval(draw, 10);
+				highScore = score;
+			}
+		}else{
+			if (confirm("Game Over!! \nYour Score was " + score +
+					"\nWould you like to play again?")){
+				intervalID = setInterval(draw, 10);
+			}
+		}
+		score = 0;
+		lives = 3;
+		level = 1;
+		numBullets = 0;
+		fx = 112;
+		fy = 304;
+		currentx = 32;
+		currenty = 128;
+		initEnemyBullets();
+		bulletExists = 0;
+		moveForRight = 1;
+		moveDown = 1;
+		shipHit = 0;
+		bulletExists = 0;
+		enemyBulletExists = 0;
+		initFormation();
+		
+	}
+}
+
+
+/* These functions deal with the shooting of the enemy bullets
+ * The first one will generate a random number and depending on the 
+   level will shoot up to 3 bullets. The bullets are stored in an array,
+   so they can be kept track of.
+ */
+function enemyShoot(){
+	var random;
+	if (!enemyBulletExists && numBullets > 0){
+		for (i=0; i<numBullets; i++){
+			random = Math.floor(Math.random()*10);
+			if(beeRow1[random].alive){
+				//fire
+				enemyBullets[i].updatePosition((beeRow1[random].x + 4), (beeRow1[random].bottomY));
+			}else if(beeRow2[random].alive){
+				//fire
+				enemyBullets[i].updatePosition((beeRow2[random].x + 4), (beeRow2[random].bottomY));
+			}else if(birdRow1[random].alive){
+				//fire
+				enemyBullets[i].updatePosition((birdRow1[random].x + 4), (birdRow1[random].bottomY));
+			}else if(birdRow2[random].alive){
+				//fire
+				enemyBullets[i].updatePosition((birdRow2[random].x + 4), (birdRow2[random].bottomY));
+			}else if(random >= 3 && random <= 6){
+				if (dragons[random-3].alive){
+					//fire
+					enemyBullets[i].updatePosition((dragons[random].x + 4), (dragons[random].bottomY));
+				}
+			}
+		}
+		enemyBulletExists = 1;
+	}
+}
+
+function initEnemyBullets(){
+	if(numBullets > 0){
+		for (i = 0; i < numBullets; i++){
+			enemyBullets[i] = new bullet();
+		}
+	}
+}
+
+//Like the initialization function but for a new level
+function newLevel(){
+	fx = 112;
+	fy = 304;
+	bulletExists = 0;
+	currentx = 32;
+	currenty = 128;
+	moveDown = 1;
+	moveForRight = 1;
+	if (numBullets < 4){
+		numBullets++;
+	}
+	initEnemyBullets();
+	//speed = speed;
+	shipHit = 0;
+	initFormation();
+	
+}
+
+//The main method that is called every 10 milliseconds. 
+function draw(){
+	clear();
+	//Assigns x,y to the bullet
+	//Keyboard handlers
+	if (rightDown)	moveRight();
+	if (leftDown)	moveLeft();
+	background();
+	fighter(fx,fy);
+	//moving coordinates
+	moveFormation();
+	moveBullets();
+	//drawing things
+	if (bulletExists){
+		bullet1.x = bx;
+		bullet1.y = by;
+		drawBullet(bullet1.x,bullet1.y);
+	}
+	drawBees();
+	drawBirds();
+	drawDragons();
+	//enemy bullets
+	enemyShoot();
+	moveEnemyBullets();
+	drawEnemyBullets();
+	checkEnemyBullet();
+	//checking conditions
+	checkGameConditions();
+	checkCollision();
+	checkFighterCollision()
+	checkBullet();
+	//writing text
+	var score_text = "Score: " + score;
+	ctx.fillStyle = "white";
+	ctx.fillText(score_text, 5, 15);
+	var level_text = "Level: " + level;
+	ctx.fillText(level_text, 5, 30);
+	var score_text = "High Score: " + highScore;
+	ctx.fillText(score_text, 100, 15);
+}
+
+init();
+</script>
+</section>
+</body>
+</html>
